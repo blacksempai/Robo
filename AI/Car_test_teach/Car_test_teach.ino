@@ -1,10 +1,13 @@
+#include <SoftwareSerial.h>
+
+SoftwareSerial unitV(3, 4);
 
 int speed_l = 5;
 int speed_r = 10;
 
 void setup() {
-  Serial.begin(9600);
-  for(int i=7;i<=9;i++){
+  unitV.begin(4800);
+  for(int i=6;i<=9;i++){
     pinMode(i, OUTPUT);
   }
   
@@ -22,10 +25,10 @@ void forward(){
 }
 
 void stop_car(){
-  digitalWrite(6, 1);
-  digitalWrite(7, 1);
-  digitalWrite(8, 1);
-  digitalWrite(9, 1);
+  digitalWrite(6,0);
+  digitalWrite(7, 0);
+  digitalWrite(8, 0);
+  digitalWrite(9, 0);
 }
 
 void right(){
@@ -43,11 +46,13 @@ void left(){
 }
 
 
-
+int a = 51;
 void loop() {
- if(Serial.available()){
-  int a=Serial.read();
-  if(a==49) //1 go
+ unitV.write(0xAF);
+ if(unitV.available()){
+  a=unitV.read();
+ }
+ if(a==49) //1 go
   {
     forward();
     speed_car(70);
@@ -58,10 +63,9 @@ void loop() {
     forward();
     speed_car(30);
   }
-  if(a==3) //3 stop
+  if(a==51) //3 stop
   {
     stop_car();
+    speed_car(0);
   }
- }
 }
-

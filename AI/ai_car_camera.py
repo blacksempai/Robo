@@ -1,3 +1,4 @@
+
 import sensor
 import image
 import lcd
@@ -9,44 +10,41 @@ from fpioa_manager import *
 
 fm.register(34,fm.fpioa.UART1_TX)
 fm.register(35,fm.fpioa.UART1_RX)
-uart_out = UART(UART.UART1, 115200, 8, None, 1, timeout=1000, read_buf_len=4096)
+uart_out = UART(UART.UART1, 4800, 8, None, 1, timeout=1000, read_buf_len=4096)
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
 sensor.run(1)
 
-while False:
-    uart_out.write('TEST\n')
-    utime.sleep_ms(100)
-
-target_lab_threshold = (45,   70,  -60,   -30,   0,   40)
+target_lab_green_threshold = (0,   80,  -90,   -30,   50,   100)
+target_lab_red_threshold = (0,   80,  20,   100,   20,   100)
+target_lab_white_threshold = (90,   100,  -10,   10, -10,   10)
 while True:
     img=sensor.snapshot()
-
-    blobs = img.find_blobs([target_lab_threshold], x_stride = 2, y_stride = 2, pixels_threshold = 100, merge = True, margin = 20)
-    if blobs:
-        max_area = 0
-        target = blobs[0]
-        for b in blobs:
+    zebra = img.find_blobs([target_lab_white_threshold], x_stride = 2, y_stride = 2, pixels_threshold = 100, merge = True, margin = 20)
+    red_blob = img.find_blobs([target_lab_red_threshold], x_stride = 2, y_stride = 2, pixels_threshold = 100, merge = True, margin = 20)
+    green_blob = img.find_blobs([target_lab_green_threshold], x_stride = 2, y_stride = 2, pixels_threshold = 100, merge = True, margin = 20)
+    max_area = 0
+    object_code = "3"
+    if zebra:
+        for b in zebra:
             if b.area() > max_area:
                 max_area = b.area()
                 target = b
-        if uart_out.read(4096):
-            area = target.area()
-            dx = 120 - target[6]
-            hexlist = [(dx >> 8) & 0xFF, dx & 0xFF, (area >> 16) & 0xFF, (area >> 8) & 0xFF, area & 0xFF]
-            uart_out.write(bytes(hexlist))
-        else:
-            pass
-        print(target.area())
-        tmp=img.draw_rectangle(target[0:4])
-        tmp=img.draw_cross(target[5], target[6])
-        c=img.get_pixel(target[5], target[6])
+                object_code = "2"
+    if green_blob:
+        for b in green_blob:
+            if b.area() > max_area:
+                max_area = b.area()
+                target = b
+                object_code = "1"
+    if red_blob:
+        for b in red_blob:
+            if b.area() > max_area:
+                max_area = b.area()
+                target = b
+                object_code = "3"
 
-    else:
-        if uart_out.read(4096):
-            hexlist = [0x80, 0x00, 0x00, 0x00, 0x00]
-            uart_out.write(bytes(hexlist))
-        else:
-            pass
+    uart_out.write(object_code)
+    print(object_code)
